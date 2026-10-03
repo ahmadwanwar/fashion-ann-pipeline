@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.dvc/cache
+.dvc/tmp
+.dvc/config.local
+*.h5
+.ipynb_checkpoints/
