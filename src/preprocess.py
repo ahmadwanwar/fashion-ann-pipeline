@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 
 
 def normalize(x):
-    return x.astype("float32") / 255.0
+    return (lambda a: (a - a.min(axis=(1, 2), keepdims=True)) / (np.ptp(a, axis=(1, 2), keepdims=True) + 1e-7))(x.astype("float32"))
 
 
 def main():
