@@ -7,3 +7,4 @@ __pycache__/
 .dvc/config.local
 *.h5
 .ipynb_checkpoints/
+/models
