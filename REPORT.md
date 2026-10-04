@@ -2,6 +2,7 @@
 
 - **Repository**: [https://github.com/ahmadwanwar/fashion-ann-pipeline](https://github.com/ahmadwanwar/fashion-ann-pipeline)
 - **Google Drive DVC Remote**: [https://drive.google.com/drive/u/0/folders/17EtYjREVF_82cgP-8tMB-9mM2WSYK_aP](https://drive.google.com/drive/u/0/folders/17EtYjREVF_82cgP-8tMB-9mM2WSYK_aP)
+- **Compiled PDF Report**: [`Assignment2_Report.pdf`](./Assignment2_Report.pdf)
 - **Author**: Muhammad Ahmad Waqar (`ahmadwaqaranwar@gmail.com`)
 
 ---
@@ -24,34 +25,7 @@
 | `git log -p -1` | Displays full unified diff patch of the most recent commit | Shows the exact line-by-line additions and deletions made in the latest commit. |
 | `git log main..dev` | Lists commits present on `dev` that have not yet been merged into `main` | Useful for reviewing pending feature branch commits prior to creating pull requests or merging into production. |
 
-```text
-$ git log --oneline --graph --all
-* e4cb8fc Update dvc.lock after merge
-*   948ec7d Merge teammate-sim into main (keep per-image min-max)
-|\  
-| * 8ea097c teammate: standardize pixels with mean/std
-* | 1723835 main: per-image min-max normalization
-|/  
-* ecee5ca v2: dense_units 256
-* e2033fc v1: first pipeline run (dvc.lock, metrics)
-* 07254c9 Add dvc.yaml pipeline
-* 6b5226a Hand artifact tracking over to dvc.yaml pipeline
-* 67f112c Track data and model with DVC (v0 artifacts)
-* 52dfb5d Configure Google Drive DVC remote
-* be6ac21 Initialize DVC
-* da623bd Remove obsolete scratch notes
-* bd7dab6 Move prepare.py into src/
-* d1d3224 Expand README description
-* 1e7f964 Add scratch notes (to be removed later)
-* 3f93ea3 Add requirements
-* 623aaa7 Add evaluate script
-* 66a7031 Add train script
-* e7d4bd8 Add params.yaml
-* a684888 Add preprocess script
-* bfc727a Add prepare script (Fashion-MNIST download)
-* c94c2e1 Fix README typo
-* 8f4e35c Initial commit: add README and gitignore
-```
+![A3 Log Variants](screenshots/a3_log_variants.png)
 
 ### A4. Diff Variants
 - `git diff`: Unstaged working directory modifications.
@@ -60,24 +34,34 @@ $ git log --oneline --graph --all
   - `git diff main..dev`: Compares the direct tips of `main` and `dev`. Any new changes on `main` show up inverted.
   - `git diff main...dev`: Compares `dev`'s tip to the merge-base (common ancestor) between `main` and `dev`, showing strictly what `dev` introduced.
 
+![A4 Diff Variants](screenshots/a4_diff_variants.png)
+
 ### A5. Git Stash Workflow
 - Stashed mid-edit changes on `src/preprocess.py` using `git stash`.
 - Checked status and inspected `git stash list`.
 - Switched to `main`, returned to `dev`, and restored working state with `git stash pop`.
 
+![A5 Git Stash](screenshots/a5_stash.png)
+
 ### A6. Rebase Scenario
 - Created `hotfix` branch off `main`, fixed README typo (`c94c2e1`), and fast-forward merged to `main`.
 - Rebased `dev` on `main` with `git rebase main`. Resolved README conflict by preserving the updated description, ensuring clean linear history.
+
+![A6 Git Rebase](screenshots/a6_rebase.png)
 
 ### A7. Soft vs Hard Reset
 - Made 2 scratch commits on `scratch` branch.
 - `git reset --soft HEAD~1`: HEAD moved backwards, but modifications remained staged in index and working tree.
 - `git reset --hard HEAD~1`: HEAD moved backwards, and modifications were completely discarded from both index and disk.
 
+![A7 Git Reset](screenshots/a7_reset.png)
+
 ### A8. History-Preserving Reorganization
 - Relocated root script with `git mv prepare.py src/prepare.py`.
 - Deleted temporary notes with `git rm scratch_notes.txt`.
 - Tracked both operations as distinct Git history events.
+
+![A8 Git Mv and Rm](screenshots/a8_mv_rm.png)
 
 ---
 
@@ -108,7 +92,9 @@ $ git log --oneline --graph --all
   $ git ls-files | Select-String -Pattern "credential|config.local"
   (No output - credentials and tokens are strictly excluded)
   ```
-- **Real Artifact Push**: Hashed payload files physically pushed to Google Drive remote.
+- **Real Artifact Push**: 7 hashed payload files physically pushed to Google Drive remote.
+
+![Part C DVC Remote and Push](screenshots/c_gdrive_push.png)
 
 ---
 
@@ -179,20 +165,27 @@ stages:
           cache: false
 ```
 
-### D3 vs D4 Execution Analysis
-- **D3 (`v1`, dense_units=128)**:
-  All four stages executed sequentially (`prepare` -> `preprocess` -> `train` -> `evaluate`). Initial `dvc.lock` generated.
-- **D4 (`v2`, dense_units=256)**:
-  `prepare` and `preprocess` were **skipped** (`didn't change, skipping`).
-  Only `train` and `evaluate` re-ran.
-- **Explanation**:
-  DVC calculates cryptographic hashes for each stage based on its code dependencies, inputs, and declared `params.yaml` keys. Because `train.dense_units` only belongs to the `train` stage, the hashes for `prepare` and `preprocess` matched `dvc.lock` and were reused from cache. When `train` detected the altered hyperparameter, it re-executed, producing a new `models/model.h5` which invalidated `evaluate`'s dependency, triggering `evaluate` to update `metrics.json`.
+### D3 Execution (`v1`, dense_units=128)
+All four stages executed sequentially (`prepare` -> `preprocess` -> `train` -> `evaluate`). Initial `dvc.lock` generated.
+
+![D3 Repro v1](screenshots/d3_repro_v1.png)
+
+### D4 Execution (`v2`, dense_units=256)
+`prepare` and `preprocess` were **skipped** (`didn't change, skipping`). Only `train` and `evaluate` re-ran.
+
+**Explanation**:
+DVC calculates cryptographic hashes for each stage based on its code dependencies, inputs, and declared `params.yaml` keys. Because `train.dense_units` only belongs to the `train` stage, the hashes for `prepare` and `preprocess` matched `dvc.lock` and were reused from cache. When `train` detected the altered hyperparameter, it re-executed, producing a new `models/model.h5` which invalidated `evaluate`'s dependency, triggering `evaluate` to update `metrics.json`.
+
+![D4 Repro v2](screenshots/d4_repro_v2.png)
 
 ### Metrics Comparison Table (v1 vs v2)
 | Metric | v1 (`dense_units=128`) | v2 (`dense_units=256`) | Delta | Target Met? |
 |---|---|---|---|---|
 | **Test Accuracy** | `87.42%` (0.8742) | `87.36%` (0.8736) | -0.06% | **Yes** ($\ge 85\%$) |
 | **Test Loss** | 0.3443 | 0.3555 | +0.0112 | N/A |
+
+### Confusion Matrix
+![Confusion Matrix](reports/confusion_matrix.png)
 
 ---
 
@@ -222,3 +215,5 @@ stages:
 3. **Workspace Sync**: Ran `dvc checkout` to synchronize `data/processed` on disk with the resolved pointer hash.
 4. **Merge Commit**: Committed resolution with `git commit -m "Merge teammate-sim into main (keep per-image min-max)"`.
 5. **Verification**: Executed `dvc repro` to retrain and re-evaluate on the resolved state (`test_accuracy=0.8764`). Confirmed `dvc status` reports `Data and pipelines are up to date.`. Pushed final code to GitHub and all data artifacts to Google Drive remote.
+
+![Part E Conflict and Resolution](screenshots/e_conflict_and_resolution.png)
